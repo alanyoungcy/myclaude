@@ -63,10 +63,11 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-gray-900 text-white items-center justify-center">
+      <div className="flex h-screen bg-background text-text items-center justify-center">
         <div className="text-center">
-          <div className="text-2xl mb-4">Loading MyClaude...</div>
-          <div className="text-gray-400">Initializing application</div>
+          <div className="spinner w-12 h-12 mb-4 mx-auto"></div>
+          <div className="text-xl font-medium mb-2">Loading MyClaude...</div>
+          <div className="text-text-secondary">Initializing application</div>
         </div>
       </div>
     );
@@ -74,13 +75,18 @@ function App() {
 
   if (error) {
     return (
-      <div className="flex h-screen bg-gray-900 text-white items-center justify-center">
+      <div className="flex h-screen bg-background text-text items-center justify-center">
         <div className="text-center max-w-2xl p-8">
-          <div className="text-2xl mb-4 text-red-400">Error Loading Application</div>
-          <div className="text-gray-300 mb-4">{error}</div>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+          <div className="w-16 h-16 mx-auto mb-4 text-error">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="text-2xl font-semibold mb-4 text-error">Error Loading Application</div>
+          <div className="text-text-secondary mb-6">{error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn btn-primary"
           >
             Retry
           </button>
@@ -90,7 +96,7 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white">
+    <div className="flex h-screen bg-background text-text">
       <Sidebar
         onOpenSettings={() => setShowSettings(true)}
         onOpenPrompts={() => setShowPrompts(true)}

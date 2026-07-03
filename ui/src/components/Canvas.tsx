@@ -63,14 +63,13 @@ export default function Canvas({ content, title, type = 'markdown', language = '
           <ReactMarkdown
             className="prose prose-invert max-w-none prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-700"
             components={{
-              code({ node, inline, className, children, ...props }) {
+              code({ node, inline, className, children, ...props }: any) {
                 const match = /language-(\w+)/.exec(className || '');
                 return !inline && match ? (
                   <SyntaxHighlighter
-                    style={vscDarkPlus}
+                    style={vscDarkPlus as any}
                     language={match[1]}
                     PreTag="div"
-                    {...props}
                   >
                     {String(children).replace(/\n$/, '')}
                   </SyntaxHighlighter>

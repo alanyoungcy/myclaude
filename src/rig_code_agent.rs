@@ -5,11 +5,12 @@
 use anyhow::Result;
 use rig_core::{
     agent::Agent,
-    completion::Prompt,
+    completion::{Chat, Message},
     providers::openai::CompletionsClient,
     client::CompletionClient,
 };
 use std::path::PathBuf;
+use std::sync::Mutex;
 use tauri::Emitter;
 
 use crate::{
@@ -28,6 +29,8 @@ pub struct RigCodeAgent {
     mem0_client: Option<Mem0Client>,
     user_id: String,
     allowed_directories: Vec<PathBuf>,
+    /// Conversation history for maintaining context across turns
+    chat_history: Mutex<Vec<Message>>,
 }
 
 impl RigCodeAgent {
@@ -61,7 +64,16 @@ impl RigCodeAgent {
             mem0_client,
             user_id,
             allowed_directories,
+            chat_history: Mutex::new(Vec::new()),
         })
+    }
+
+    /// Reset the conversation history
+    ///
+    /// Call this when starting a new conversation
+    pub fn reset_history(&self) {
+        let mut history = self.chat_history.lock().unwrap();
+        history.clear();
     }
 
     /// Chat with the code agent
@@ -74,17 +86,26 @@ impl RigCodeAgent {
     pub async fn chat(&self, query: &str) -> Result<String> {
         self.emit_log("Starting code agent...");
 
-        // 1. Search memory for relevant context
+        // 1. Search memory for relevant context (only for first message or as additional context)
         let context = self.search_memory(query).await;
 
-        // 2. Build the prompt with context
-        let full_prompt = if let Some(ctx) = context {
+        // 2. Build the user message
+        let user_message = if let Some(ctx) = context {
             self.emit_log(&format!("Using {} relevant memories", ctx.len()));
-            format!(
-                "Relevant context from previous conversations:\n{}\n\nUser query: {}",
-                ctx.join("\n"),
-                query
-            )
+
+            // Add context as additional information if this is the first turn
+            let history = self.chat_history.lock().unwrap();
+            if history.is_empty() {
+                // Add context as additional information
+                format!(
+                    "Relevant context from previous conversations:\n{}\n\nUser query: {}",
+                    ctx.join("\n"),
+                    query
+                )
+            } else {
+                // Just use the query if we already have conversation history
+                query.to_string()
+            }
         } else {
             query.to_string()
         };
@@ -93,9 +114,12 @@ impl RigCodeAgent {
         self.emit_log("Building code agent with file tools...");
         let agent = self.build_agent();
 
-        // 4. Call the agent (Rig handles tool calling automatically)
+        // 4. Get mutable access to chat history and call the agent
         self.emit_log("Processing query...");
-        let response = agent.prompt(&full_prompt).await?;
+        let response = {
+            let mut history = self.chat_history.lock().unwrap();
+            agent.chat(&user_message, &mut *history).await?
+        };
 
         // 5. Save interaction to memory
         self.save_memory(query, &response).await;

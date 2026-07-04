@@ -79,12 +79,12 @@ export default function ChatView() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-background">
+    <div className="flex-1 flex flex-col bg-background relative">
       {/* Mode Selector */}
       <ModeSelector currentMode={chatMode} onModeChange={setChatMode} />
 
       <div
-        className="flex-1 flex flex-col"
+        className="flex-1 flex flex-col overflow-hidden"
         onDragOver={(e) => {
           e.preventDefault();
           setDragOver(true);

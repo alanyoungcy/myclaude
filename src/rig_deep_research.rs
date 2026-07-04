@@ -100,44 +100,44 @@ impl RigDeepResearchAgent {
         self.emit_log("Phase 1: Creating research plan");
         let plan = self.create_research_plan(topic).await?;
         self.save_to_file("research_plan.md", &plan).await?;
-        self.emit_log("Research plan saved to research_plan.md");
+        self.emit_log("Generated comprehensive research plan with key questions");
 
         // Create todo.md checklist
         let todo = self.create_todo_from_plan(&plan).await?;
         self.save_to_file("todo.md", &todo).await?;
-        self.emit_log("Todo checklist created: todo.md");
+        self.emit_log("Created todo checklist for tracking progress");
 
         // Phase 2: Information Gathering
         self.set_phase(ResearchPhase::InformationGathering);
         self.emit_log("Phase 2: Gathering information from multiple sources");
         let sources = self.gather_information(topic).await?;
-        self.emit_log(&format!("Collected {} sources", sources.len()));
+        self.emit_log(&format!("Collected information from {} sources", sources.len()));
 
         // Phase 3: Analysis
         self.set_phase(ResearchPhase::Analysis);
         self.emit_log("Phase 3: Analyzing collected information");
         let analysis = self.analyze_information(topic, &sources).await?;
         self.save_to_file("analysis.md", &analysis).await?;
-        self.emit_log("Analysis saved to analysis.md");
+        self.emit_log("Analysis completed - identified key themes and insights");
 
         // Phase 4: Synthesis
         self.set_phase(ResearchPhase::Synthesis);
-        self.emit_log("Phase 4: Synthesizing insights");
+        self.emit_log("Phase 4: Synthesizing insights from multiple sources");
         let synthesis = self.synthesize_insights(topic, &analysis).await?;
         self.save_to_file("synthesis.md", &synthesis).await?;
-        self.emit_log("Synthesis saved to synthesis.md");
+        self.emit_log("Synthesis completed - integrated findings across sources");
 
         // Phase 5: Writing Final Report
         self.set_phase(ResearchPhase::Writing);
         self.emit_log("Phase 5: Writing comprehensive research report");
         let report = self.write_final_report(topic, &plan, &analysis, &synthesis).await?;
         self.save_to_file("final_report.md", &report).await?;
-        self.emit_log("Final report saved to final_report.md");
+        self.emit_log("Final report generated - research completed successfully");
 
         // Mark as completed
         self.set_phase(ResearchPhase::Completed);
         self.update_todo_completion().await?;
-        self.emit_log("✅ Deep research completed!");
+        self.emit_log("✅ Deep research completed successfully!");
 
         // Save to memory
         self.save_memory(topic, &report).await;
@@ -202,11 +202,11 @@ impl RigDeepResearchAgent {
 
         // Generate search queries
         let queries = self.generate_search_queries(topic).await?;
-        self.emit_log(&format!("Generated {} search queries", queries.len()));
+        self.emit_log(&format!("Generated {} search queries for comprehensive coverage", queries.len()));
 
         // Search each query and collect sources
         for (i, query) in queries.iter().enumerate() {
-            self.emit_log(&format!("Searching: {} ({}/{})", query, i + 1, queries.len()));
+            self.emit_log(&format!("Searching query {}/{}: \"{}\"", i + 1, queries.len(), query));
 
             let prompt = format!(
                 "Search for: \"{}\"\n\n\
@@ -219,10 +219,10 @@ impl RigDeepResearchAgent {
             let results = agent.chat(&prompt, &mut *history).await?;
             sources.push(results);
 
-            // Update progress
-            self.update_todo_item(&format!("Search query: {}", query)).await?;
+            self.emit_log(&format!("✓ Completed search {}/{}", i + 1, queries.len()));
         }
 
+        self.emit_log(&format!("Information gathering complete - collected {} source sets", sources.len()));
         Ok(sources)
     }
 

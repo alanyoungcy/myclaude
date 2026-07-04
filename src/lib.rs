@@ -7,6 +7,8 @@ mod storage;
 mod commands;
 mod tavily;
 mod skills;
+mod llm_wrapper;
+mod deep_research;
 
 use config::AppConfig;
 use storage::Database;

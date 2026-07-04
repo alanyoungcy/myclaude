@@ -17,13 +17,13 @@ use crate::tavily::{TavilyClient, TavilySearchResult};
 pub struct WebSearchArgs {
     /// The search query
     pub query: String,
-    /// Maximum number of results to return (default: 5)
+    /// Maximum number of results to return (default: 10 for research)
     #[serde(default = "default_max_results")]
     pub max_results: u32,
 }
 
 fn default_max_results() -> u32 {
-    5
+    10  // Changed to 10 for deeper research
 }
 
 /// Web search tool errors
@@ -75,7 +75,7 @@ impl Tool for WebSearchTool {
     async fn definition(&self, _prompt: String) -> ToolDefinition {
         ToolDefinition {
             name: Self::NAME.to_string(),
-            description: "Search the web for current information, facts, news, or specific data. Use this when you need up-to-date information or when the user asks about recent events.".to_string(),
+            description: "Search the web for current information, facts, news, or specific data. Uses Tavily advanced search with up to 10 pages and 5 chunks per page for comprehensive results.".to_string(),
             parameters: json!({
                 "type": "object",
                 "properties": {
@@ -85,10 +85,10 @@ impl Tool for WebSearchTool {
                     },
                     "max_results": {
                         "type": "integer",
-                        "description": "Maximum number of results to return (default: 5)",
-                        "default": 5,
+                        "description": "Maximum number of pages to return (default: 10 for deep research)",
+                        "default": 10,
                         "minimum": 1,
-                        "maximum": 10
+                        "maximum": 20
                     }
                 },
                 "required": ["query"]

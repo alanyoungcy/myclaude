@@ -41,17 +41,17 @@ impl TavilyClient {
     }
 
     pub async fn search(&self, query: &str, max_results: u32) -> Result<Vec<TavilySearchResult>, Box<dyn std::error::Error>> {
-        println!("Tavily advanced search: {} (max results: {})", query, max_results);
+        println!("Tavily advanced search: {} (max results: {}, ~5 chunks per page)", query, max_results);
 
         let request = TavilySearchRequest {
             api_key: self.api_key.clone(),
             query: query.to_string(),
-            search_depth: "advanced".to_string(), // Changed to advanced
+            search_depth: "advanced".to_string(), // Advanced mode for deeper research
             max_results,
             include_answer: true,
             include_raw_content: true,
             include_images: false,
-            max_tokens: Some(4000), // ~5 chunks per result
+            max_tokens: Some(4000), // ~5 chunks per result page
         };
 
         let response = self.client
@@ -67,7 +67,7 @@ impl TavilyClient {
         }
 
         let tavily_response: TavilyResponse = response.json().await?;
-        println!("Tavily returned {} results (advanced mode)", tavily_response.results.len());
+        println!("Tavily returned {} results (advanced mode with ~5 chunks per page)", tavily_response.results.len());
 
         Ok(tavily_response.results)
     }

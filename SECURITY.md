@@ -6,9 +6,8 @@
 
 **A Mem0 API key was previously committed to this repository's history (commits prior to `1a595e4`).**
 
-- **Key**: `m0-wXmQydXIdi1vZIbtcZ66xrpcyoJEusHyEiuY5SWG`
 - **Status**: This key has been removed from the codebase but remains in Git history
-- **Action Required**: This key should be considered compromised and revoked
+- **Action Required**: If you cloned this repository before commit `1a595e4`, please ensure you obtain your own API keys
 
 ### Current Security Measures
 

@@ -5,10 +5,12 @@
 
 pub mod web_search;
 pub mod calculator;
+pub mod file_ops;
 
 // Re-export tools for convenience
 pub use web_search::WebSearchTool;
 pub use calculator::CalculatorTool;
+pub use file_ops::{ReadFileTool, WriteFileTool, ListFilesTool};
 
 use rig_core::tool::ToolDyn;
 

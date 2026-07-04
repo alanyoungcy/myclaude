@@ -6,6 +6,7 @@ import ModeSelector from './ModeSelector';
 import { getPlaceholderForMode } from '../chatModes';
 import { listen } from '@tauri-apps/api/event';
 import ResearchProgress, { ResearchStep } from './ResearchProgress';
+import ReasoningTrace, { ReasoningStep as ReasoningStepType } from './ReasoningTrace';
 
 export default function ChatView() {
   const { currentConversation, messages, addMessage, isLoading, setLoading, config, chatMode, setChatMode } = useStore();
@@ -15,6 +16,7 @@ export default function ChatView() {
   const [loadingStep, setLoadingStep] = useState(0);
   const [researchSteps, setResearchSteps] = useState<ResearchStep[]>([]);
   const [codeAgentSteps, setCodeAgentSteps] = useState<ResearchStep[]>([]);
+  const [reasoningSteps, setReasoningSteps] = useState<ReasoningStepType[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -164,12 +166,38 @@ export default function ChatView() {
     };
   }, []);
 
+  // Listen for reasoning steps (new structured reasoning trace)
+  useEffect(() => {
+    const unlistenReasoning = listen<ReasoningStepType>('reasoning-step', (event) => {
+      console.log('Reasoning step:', event.payload);
+      const step = event.payload;
+
+      setReasoningSteps((prev) => {
+        const existingIndex = prev.findIndex(s => s.id === step.id);
+        if (existingIndex >= 0) {
+          // Update existing step
+          const newSteps = [...prev];
+          newSteps[existingIndex] = step;
+          return newSteps;
+        } else {
+          // Add new step
+          return [...prev, step];
+        }
+      });
+    });
+
+    return () => {
+      unlistenReasoning.then((fn) => fn());
+    };
+  }, []);
+
   // Progress steps cycle
   useEffect(() => {
     if (!isLoading) {
       setLoadingStep(0);
       setResearchSteps([]);
       setCodeAgentSteps([]);
+      setReasoningSteps([]); // Clear reasoning steps when done
       return;
     }
 
@@ -298,7 +326,11 @@ export default function ChatView() {
 
         {isLoading && (
           <div className="flex justify-start animate-in">
-            {chatMode === 'research' && researchSteps.length > 0 ? (
+            {reasoningSteps.length > 0 ? (
+              <div className="w-full max-w-3xl">
+                <ReasoningTrace steps={reasoningSteps} isThinking={true} />
+              </div>
+            ) : chatMode === 'research' && researchSteps.length > 0 ? (
               <div className="w-full max-w-3xl">
                 <ResearchProgress steps={researchSteps} />
               </div>

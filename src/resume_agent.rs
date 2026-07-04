@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tauri::Emitter;
 
 use crate::llm::{LLMClient, ChatRequest, Message as LLMMessage};
@@ -11,6 +10,7 @@ use crate::mem0::{Mem0Client, Message as Mem0Message};
 /// Focuses on ATS-friendly formatting and job-specific optimization
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct CandidateProfile {
     pub name: String,
     pub email: Option<String>,
@@ -26,6 +26,7 @@ pub struct CandidateProfile {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct Experience {
     pub company: String,
     pub title: String,
@@ -34,6 +35,7 @@ pub struct Experience {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct Education {
     pub institution: String,
     pub degree: String,
@@ -43,6 +45,7 @@ pub struct Education {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct Project {
     pub name: String,
     pub description: String,
@@ -51,6 +54,7 @@ pub struct Project {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct JobTarget {
     pub title: String,
     pub company: String,
@@ -60,6 +64,7 @@ pub struct JobTarget {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct JobAnalysis {
     pub job_summary: String,
     pub top_keywords: Vec<String>,
@@ -206,6 +211,7 @@ Output format:
     }
 
     /// Analyze job description
+    #[allow(dead_code)]
     pub async fn analyze_job(
         &self,
         profile: &CandidateProfile,
@@ -284,10 +290,11 @@ CANDIDATE PROFILE:
     }
 
     /// Generate tailored resume
+    #[allow(dead_code)]
     pub async fn generate_resume(
         &self,
         profile: &CandidateProfile,
-        job: &JobTarget,
+        _job: &JobTarget,
         analysis: &JobAnalysis,
         model: &str,
     ) -> Result<String, String> {
@@ -349,6 +356,7 @@ CANDIDATE PROFILE:
     }
 
     /// Generate cover letter
+    #[allow(dead_code)]
     pub async fn generate_cover_letter(
         &self,
         profile: &CandidateProfile,

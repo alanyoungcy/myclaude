@@ -34,14 +34,13 @@ pub struct AddMemoryResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memories: Option<Vec<MemoryItem>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub relations: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub event_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct MemoryItem {
     pub id: String,
     pub memory: String,
@@ -75,6 +74,7 @@ pub struct SearchMemoriesResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct SearchResult {
     pub id: String,
     pub memory: String,
@@ -83,18 +83,6 @@ pub struct SearchResult {
     pub score: f64,
     pub created_at: String,
     pub updated_at: String,
-}
-
-#[derive(Debug, Serialize)]
-struct GetAllMemoriesRequest {
-    user_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    agent_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct GetAllMemoriesResponse {
-    pub results: Vec<MemoryItem>,
 }
 
 impl Mem0Client {
@@ -207,99 +195,6 @@ impl Mem0Client {
             .json::<SearchMemoriesResponse>()
             .await
             .map_err(|e| format!("Failed to parse response: {}", e))
-    }
-
-    /// Get all memories for a user/agent
-    ///
-    /// # Arguments
-    /// * `user_id` - User identifier
-    /// * `agent_id` - Optional agent identifier to filter memories
-    pub async fn get_all_memories(
-        &self,
-        user_id: &str,
-        agent_id: Option<String>,
-    ) -> Result<GetAllMemoriesResponse, String> {
-        let url = format!("{}/memories/", self.base_url);
-
-        let request = GetAllMemoriesRequest {
-            user_id: user_id.to_string(),
-            agent_id,
-        };
-
-        let response = self.client
-            .post(&url)
-            .header("Authorization", format!("Token {}", self.api_key))
-            .header("Content-Type", "application/json")
-            .json(&request)
-            .send()
-            .await
-            .map_err(|e| format!("Failed to send request: {}", e))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            return Err(format!("Mem0 API error ({}): {}", status, error_text));
-        }
-
-        response
-            .json::<GetAllMemoriesResponse>()
-            .await
-            .map_err(|e| format!("Failed to parse response: {}", e))
-    }
-
-    /// Delete a specific memory by ID
-    ///
-    /// # Arguments
-    /// * `memory_id` - The ID of the memory to delete
-    pub async fn delete_memory(&self, memory_id: &str) -> Result<(), String> {
-        let url = format!("{}/memories/{}/", self.base_url, memory_id);
-
-        let response = self.client
-            .delete(&url)
-            .header("Authorization", format!("Token {}", self.api_key))
-            .send()
-            .await
-            .map_err(|e| format!("Failed to send request: {}", e))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            return Err(format!("Mem0 API error ({}): {}", status, error_text));
-        }
-
-        Ok(())
-    }
-
-    /// Delete all memories for a user/agent
-    ///
-    /// # Arguments
-    /// * `user_id` - User identifier
-    /// * `agent_id` - Optional agent identifier
-    pub async fn delete_all_memories(
-        &self,
-        user_id: &str,
-        agent_id: Option<String>,
-    ) -> Result<(), String> {
-        let mut url = format!("{}/memories/?user_id={}", self.base_url, user_id);
-
-        if let Some(agent) = agent_id {
-            url.push_str(&format!("&agent_id={}", agent));
-        }
-
-        let response = self.client
-            .delete(&url)
-            .header("Authorization", format!("Token {}", self.api_key))
-            .send()
-            .await
-            .map_err(|e| format!("Failed to send request: {}", e))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            return Err(format!("Mem0 API error ({}): {}", status, error_text));
-        }
-
-        Ok(())
     }
 }
 

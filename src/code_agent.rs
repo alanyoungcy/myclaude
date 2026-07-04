@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::Emitter;
 use std::path::Path;
@@ -13,13 +12,6 @@ use crate::mem0::{Mem0Client, Message as Mem0Message};
 /// - Read and write files
 /// - Execute commands
 /// - Search and refactor code
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AgentStep {
-    pub step_type: String,
-    pub description: String,
-    pub status: String, // "running" | "completed" | "error"
-}
 
 pub struct CodeAgent {
     llm_client: LLMClient,

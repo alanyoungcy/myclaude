@@ -24,27 +24,27 @@ export default function Canvas({ content, title, type = 'markdown', language = '
   };
 
   return (
-    <div className="canvas-container bg-gray-800 rounded-lg border border-gray-700 overflow-hidden shadow-lg">
+    <div className="canvas-container bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
       {/* Header */}
-      <div className="canvas-header flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-700">
+      <div className="canvas-header flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
         <div className="flex items-center space-x-2">
-          <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <span className="text-sm font-medium text-gray-300">
+          <span className="text-sm font-medium text-gray-700">
             {title || 'Canvas'}
           </span>
         </div>
         <button
           onClick={handleCopy}
-          className="flex items-center space-x-2 px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors"
+          className="flex items-center space-x-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors"
         >
           {copied ? (
             <>
-              <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              <span className="text-green-400">Copied!</span>
+              <span className="text-green-600">Copied!</span>
             </>
           ) : (
             <>
@@ -58,10 +58,19 @@ export default function Canvas({ content, title, type = 'markdown', language = '
       </div>
 
       {/* Content */}
-      <div className="canvas-content p-6 max-h-[600px] overflow-y-auto">
+      <div className="canvas-content p-6 max-h-[600px] overflow-y-auto bg-white">
         {type === 'markdown' && (
           <ReactMarkdown
-            className="prose prose-invert max-w-none prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-700"
+            className="prose prose-gray max-w-none
+              prose-headings:text-gray-900 prose-headings:font-semibold
+              prose-p:text-gray-700 prose-p:leading-relaxed
+              prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+              prose-strong:text-gray-900 prose-strong:font-semibold
+              prose-code:text-purple-600 prose-code:bg-gray-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+              prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200
+              prose-blockquote:border-l-blue-500 prose-blockquote:bg-gray-50
+              prose-ul:text-gray-700 prose-ol:text-gray-700
+              prose-li:marker:text-gray-500"
             components={{
               code({ node, inline, className, children, ...props }: any) {
                 const match = /language-(\w+)/.exec(className || '');

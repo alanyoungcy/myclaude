@@ -2,11 +2,14 @@ import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store';
 import { sendMessage } from '../api';
 import MessageCanvas from './MessageCanvas';
+import ModeSelector from './ModeSelector';
+import { getPlaceholderForMode } from '../chatModes';
 
 export default function ChatView() {
-  const { currentConversation, messages, addMessage, isLoading, setLoading, config } = useStore();
+  const { currentConversation, messages, addMessage, isLoading, setLoading, config, chatMode, setChatMode } = useStore();
   const [input, setInput] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,11 +49,16 @@ export default function ChatView() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    
+
     const files = Array.from(e.dataTransfer.files);
-    console.log('Files dropped:', files);
-    // TODO: Implement file upload
-    alert('File upload coming soon!');
+    if (files.length > 0) {
+      setUploadedFiles(prev => [...prev, ...files]);
+      console.log('Files dropped:', files.map(f => f.name));
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   if (!config?.api_key || !config?.base_url) {
@@ -71,20 +79,30 @@ export default function ChatView() {
   }
 
   return (
-    <div
-      className="flex-1 flex flex-col bg-background"
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragOver(true);
-      }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={handleDrop}
-    >
-      {dragOver && (
-        <div className="absolute inset-0 bg-primary bg-opacity-10 border-4 border-primary border-dashed flex items-center justify-center z-10 rounded-xl">
-          <div className="text-2xl font-semibold text-primary">Drop files here</div>
-        </div>
-      )}
+    <div className="flex-1 flex flex-col bg-background">
+      {/* Mode Selector */}
+      <ModeSelector currentMode={chatMode} onModeChange={setChatMode} />
+
+      <div
+        className="flex-1 flex flex-col"
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+      >
+        {dragOver && (
+          <div className="absolute inset-0 bg-primary bg-opacity-10 border-4 border-primary border-dashed flex items-center justify-center z-10 rounded-xl">
+            <div className="text-center">
+              <svg className="w-16 h-16 mx-auto mb-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <div className="text-2xl font-semibold text-primary">Drop files here</div>
+              <div className="text-sm text-text-secondary mt-2">Supported: PDF, TXT, MD, DOCX</div>
+            </div>
+          </div>
+        )}
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.length === 0 && (
@@ -124,27 +142,55 @@ export default function ChatView() {
       </div>
 
       <div className="border-t border-border p-6 bg-surface">
-        <div className="flex space-x-3 max-w-4xl mx-auto">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message... (Shift+Enter for new line)"
-            className="input flex-1 resize-none min-h-[60px]"
-            rows={2}
-            disabled={isLoading}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            className="btn btn-primary px-8 self-end"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </button>
+        <div className="max-w-4xl mx-auto space-y-3">
+          {/* Uploaded files display */}
+          {uploadedFiles.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {uploadedFiles.map((file, index) => (
+                <div
+                  key={index}
+                  className="flex items-center space-x-2 px-3 py-2 bg-background-secondary rounded-lg border border-border"
+                >
+                  <svg className="w-4 h-4 text-text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm text-text-secondary">{file.name}</span>
+                  <button
+                    onClick={() => removeFile(index)}
+                    className="text-text-tertiary hover:text-error transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex space-x-3">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={getPlaceholderForMode(chatMode)}
+              className="input flex-1 resize-none min-h-[60px]"
+              rows={2}
+              disabled={isLoading}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || isLoading}
+              className="btn btn-primary px-8 self-end"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { extractArtifacts, Artifact } from '../utils/artifacts';
 import ArtifactsPanel from './ArtifactsPanel';
+import ThinkingBubble from './ThinkingBubble';
 
 interface MessageCanvasProps {
   content: string;
@@ -14,6 +15,13 @@ export default function MessageCanvas({ content, role }: MessageCanvasProps) {
   const [copiedBlocks, setCopiedBlocks] = useState<Set<number>>(new Set());
   const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
   const artifacts = role === 'assistant' ? extractArtifacts(content) : [];
+
+  // Extract thinking content from <thinking> tags
+  const thinkingMatch = content.match(/<thinking>([\s\S]*?)<\/thinking>/);
+  const thinkingContent = thinkingMatch ? thinkingMatch[1].trim() : null;
+  const mainContent = thinkingContent
+    ? content.replace(/<thinking>[\s\S]*?<\/thinking>/, '').trim()
+    : content;
 
   const handleCopyBlock = async (text: string, blockIndex: number) => {
     try {
@@ -44,6 +52,11 @@ export default function MessageCanvas({ content, role }: MessageCanvasProps) {
   return (
     <>
       <div className="card p-6">
+        {/* Thinking bubble - show if thinking content exists */}
+        {thinkingContent && (
+          <ThinkingBubble content={thinkingContent} />
+        )}
+
         {/* Artifacts indicator */}
         {artifacts.length > 0 && (
           <div className="mb-4 flex flex-wrap gap-2">
@@ -165,7 +178,7 @@ export default function MessageCanvas({ content, role }: MessageCanvasProps) {
             ),
           }}
         >
-          {content}
+          {mainContent}
         </ReactMarkdown>
       </div>
 

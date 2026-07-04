@@ -7,8 +7,6 @@ mod storage;
 mod commands;
 mod tavily;
 mod skills;
-mod llm_wrapper;
-mod agent_manager;
 
 use config::AppConfig;
 use storage::Database;

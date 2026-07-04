@@ -1,5 +1,13 @@
-use crate::{AppState, config::AppConfig, llm::{LLMClient, ChatRequest, Message as LLMMessage}, storage::{SystemPrompt, Conversation, ChatMessage}, tavily::{TavilyClient, TavilySearchResult}, skills::{Skill, skill_to_tool}};
-use tauri::State;
+use crate::{
+    AppState,
+    config::AppConfig,
+    llm::{LLMClient, ChatRequest, Message as LLMMessage},
+    storage::{SystemPrompt, Conversation, ChatMessage},
+    tavily::{TavilyClient, TavilySearchResult},
+    skills::{Skill, skill_to_tool},
+    rig_deep_research::RigDeepResearchAgent,
+};
+use tauri::{State, Emitter};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -67,7 +75,7 @@ pub async fn get_models(state: State<'_, AppState>) -> Result<Vec<String>, Strin
 // Chat commands
 #[tauri::command]
 pub async fn send_message(
-    _app_handle: tauri::AppHandle,
+    app_handle: tauri::AppHandle,
     state: State<'_, AppState>,
     request: SendMessageRequest,
 ) -> Result<SendMessageResponse, String> {
@@ -91,8 +99,76 @@ pub async fn send_message(
         (user_message, history)
     };
 
-    // TEMP: Mode-specific agents disabled during Rig migration
-    // TODO: Integrate RigGeneralAgent, RigDeepResearchAgent, RigCodeAgent, RigResumeAgent
+    // Check if we're in research mode and should use deep research
+    if let Some(mode) = &request.mode {
+        if mode == "research" && !config.tavily_api_key.is_empty() {
+            println!("Research mode detected - running Rig deep research agent");
+            let _ = app_handle.emit("research-agent-log", "Research mode detected - starting deep research");
+
+            // Use conversation_id as user_id for memory
+            let user_id = request.conversation_id.clone();
+
+            // Prepare memory API key
+            let mem0_key = if !config.mem0_api_key.is_empty() {
+                Some(config.mem0_api_key.clone())
+            } else {
+                None
+            };
+
+            // Create work directory for research files
+            let work_dir = std::env::temp_dir().join(format!("research_{}", user_id));
+            std::fs::create_dir_all(&work_dir).map_err(|e| e.to_string())?;
+
+            // Run deep research in a spawned task to avoid Send issues
+            let base_url = config.base_url.clone();
+            let api_key = config.api_key.clone();
+            let model = config.model.clone();
+            let tavily_key = config.tavily_api_key.clone();
+            let message = request.message.clone();
+            let conversation_id = request.conversation_id.clone();
+            let app_handle_clone = app_handle.clone();
+
+            // Spawn blocking task to run research
+            let research_result = tokio::task::spawn_blocking(move || {
+                tokio::runtime::Handle::current().block_on(async {
+                    // Create agent
+                    let research_agent = RigDeepResearchAgent::new(
+                        base_url,
+                        api_key,
+                        model,
+                        app_handle_clone.clone(),
+                        mem0_key,
+                        Some(tavily_key),
+                        user_id,
+                        work_dir,
+                    )?;
+
+                    // Run research
+                    research_agent.research(&message).await
+                })
+            })
+            .await
+            .map_err(|e| format!("Task join error: {}", e))?
+            .map_err(|e| format!("Deep research failed: {}", e))?;
+
+            let _ = app_handle.emit("research-agent-log", "Deep research completed successfully");
+
+            // Save research result as assistant message
+            let assistant_message_record = {
+                let db = state.db.lock().unwrap();
+                db.add_message(&conversation_id, "assistant", &research_result)
+                    .map_err(|e| e.to_string())?
+            };
+
+            return Ok(SendMessageResponse {
+                message: user_message,
+                assistant_message: assistant_message_record,
+            });
+        }
+    }
+
+    // TEMP: Other mode-specific agents disabled during Rig migration
+    // TODO: Integrate RigGeneralAgent, RigCodeAgent, RigResumeAgent
 
     // Build messages for LLM
     let mut messages = vec![LLMMessage {

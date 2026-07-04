@@ -16,6 +16,7 @@ pub mod rig_provider;
 pub mod tools;
 pub mod rig_general_agent;
 pub mod rig_code_agent;
+pub mod rig_deep_research;
 
 use config::AppConfig;
 use storage::Database;

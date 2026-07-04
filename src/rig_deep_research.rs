@@ -240,7 +240,7 @@ impl RigDeepResearchAgent {
     }
 
     /// Phase 2: Gather information from multiple sources with queries
-    async fn gather_information_with_queries(&self, topic: &str, queries: Vec<String>) -> Result<Vec<String>> {
+    async fn gather_information_with_queries(&self, _topic: &str, queries: Vec<String>) -> Result<Vec<String>> {
         let agent = self.build_research_agent();
         let mut sources = Vec::new();
 
@@ -267,6 +267,7 @@ impl RigDeepResearchAgent {
     }
 
     /// Phase 2: Gather information from multiple sources (kept for compatibility)
+    #[allow(dead_code)]
     async fn gather_information(&self, topic: &str) -> Result<Vec<String>> {
         let queries = self.generate_search_queries(topic).await?;
         self.gather_information_with_queries(topic, queries).await
@@ -476,6 +477,7 @@ impl RigDeepResearchAgent {
     }
 
     /// Update todo.md to mark item as complete
+    #[allow(dead_code)]
     async fn update_todo_item(&self, item: &str) -> Result<()> {
         // This would read todo.md, find the item, and mark it as [x]
         // Simplified for now

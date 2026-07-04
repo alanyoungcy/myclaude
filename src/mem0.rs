@@ -32,10 +32,13 @@ struct AddMemoryRequest {
 #[derive(Debug, Deserialize)]
 pub struct AddMemoryResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[allow(dead_code)]
     pub memories: Option<Vec<MemoryItem>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[allow(dead_code)]
     pub event_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[allow(dead_code)]
     pub status: Option<String>,
 }
 

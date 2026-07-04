@@ -1,6 +1,5 @@
 use crate::{AppState, config::AppConfig, llm::{LLMClient, ChatRequest, Message as LLMMessage}, storage::{SystemPrompt, Conversation, ChatMessage}, tavily::{TavilyClient, TavilySearchResult}, skills::{Skill, skill_to_tool}};
 use tauri::State;
-use tauri::Emitter;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -68,7 +67,7 @@ pub async fn get_models(state: State<'_, AppState>) -> Result<Vec<String>, Strin
 // Chat commands
 #[tauri::command]
 pub async fn send_message(
-    app_handle: tauri::AppHandle,
+    _app_handle: tauri::AppHandle,
     state: State<'_, AppState>,
     request: SendMessageRequest,
 ) -> Result<SendMessageResponse, String> {

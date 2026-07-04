@@ -12,6 +12,7 @@ mod code_agent;
 mod mem0;
 mod resume_agent;
 mod general_agent;
+pub mod rig_provider;
 
 use config::AppConfig;
 use storage::Database;

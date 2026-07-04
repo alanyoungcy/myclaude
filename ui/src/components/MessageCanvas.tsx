@@ -169,16 +169,20 @@ export default function MessageCanvas({ content, role }: MessageCanvasProps) {
         </ReactMarkdown>
       </div>
 
-      {/* Artifacts Panel */}
+      {/* Artifacts Panel - Fixed overlay */}
       {selectedArtifact && (
-        <ArtifactsPanel
-          isOpen={!!selectedArtifact}
-          onClose={() => setSelectedArtifact(null)}
-          content={selectedArtifact.content}
-          title={selectedArtifact.title}
-          type={selectedArtifact.type}
-          language={selectedArtifact.language}
-        />
+        <div className="fixed inset-0 z-40" onClick={() => setSelectedArtifact(null)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <ArtifactsPanel
+              isOpen={!!selectedArtifact}
+              onClose={() => setSelectedArtifact(null)}
+              content={selectedArtifact.content}
+              title={selectedArtifact.title}
+              type={selectedArtifact.type}
+              language={selectedArtifact.language}
+            />
+          </div>
+        </div>
       )}
     </>
   );

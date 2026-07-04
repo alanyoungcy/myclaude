@@ -7,16 +7,14 @@ mod storage;
 mod commands;
 mod tavily;
 mod skills;
-mod deep_research;
-mod code_agent;
 mod mem0;
-mod resume_agent;
-mod general_agent;
+// New Rig-based agents
 pub mod rig_provider;
 pub mod tools;
 pub mod rig_general_agent;
 pub mod rig_code_agent;
 pub mod rig_deep_research;
+pub mod rig_resume_agent;
 
 use config::AppConfig;
 use storage::Database;

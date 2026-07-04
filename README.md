@@ -1,7 +1,6 @@
 # MyClaude
 
 <div align="center">
-  <img src="screenshots/app_interface.png" alt="MyClaude Interface" width="800">
   
   **A modern, production-grade AI assistant built with Rust and React**
   

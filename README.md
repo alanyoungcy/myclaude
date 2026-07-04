@@ -343,7 +343,7 @@ BASE_URL=https://api.openai.com/v1
 MODEL=gpt-4
 SYSTEM_PROMPT=You are a helpful assistant.
 TAVILY_API_KEY=your_tavily_key_here
-MEM0_API_KEY=m0-wXmQydXIdi1vZIbtcZ66xrpcyoJEusHyEiuY5SWG
+MEM0_API_KEY=your_mem0_key_here
 ```
 
 ### Via Settings UI

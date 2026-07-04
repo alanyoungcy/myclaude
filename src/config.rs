@@ -19,7 +19,7 @@ impl Default for AppConfig {
             model: "gpt-4".to_string(),
             system_prompt: "You are a helpful assistant.".to_string(),
             tavily_api_key: String::new(),
-            mem0_api_key: "m0-wXmQydXIdi1vZIbtcZ66xrpcyoJEusHyEiuY5SWG".to_string(),
+            mem0_api_key: String::new(),
         }
     }
 }
@@ -42,7 +42,7 @@ impl AppConfig {
                 .to_string();
             let tavily_api_key = std::env::var("TAVILY_API_KEY").unwrap_or_default();
             let mem0_api_key = std::env::var("MEM0_API_KEY")
-                .unwrap_or_else(|_| "m0-wXmQydXIdi1vZIbtcZ66xrpcyoJEusHyEiuY5SWG".to_string());
+                .unwrap_or_else(|_| String::new());
 
             println!("Config loaded - API Key: {}, Base URL: {}, Model: {}, Tavily: {}, Mem0: {}",
                 if api_key.is_empty() { "EMPTY" } else { "SET" },

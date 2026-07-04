@@ -10,8 +10,10 @@ use rig_core::{
     providers::openai::CompletionsClient,
     client::CompletionClient,
 };
+use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::time::Instant;
 use tauri::Emitter;
 
 use crate::{
@@ -29,6 +31,27 @@ pub enum ResearchPhase {
     Synthesis,
     Writing,
     Completed,
+}
+
+/// Reasoning step for frontend display
+#[derive(Debug, Clone, Serialize)]
+pub struct ReasoningStep {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub status: String, // "pending" | "running" | "completed"
+    pub duration: Option<u64>, // milliseconds
+    pub metadata: Option<ReasoningMetadata>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ReasoningMetadata {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub queries: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sources: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub count: Option<usize>,
 }
 
 /// Rig-based Deep Research Agent
@@ -97,10 +120,12 @@ impl RigDeepResearchAgent {
 
         // Phase 1: Planning
         self.set_phase(ResearchPhase::Planning);
-        self.emit_log("Phase 1: Creating research plan");
+        let planning_start = self.start_step("planning", "Planning", "Initializing research plan...");
+
         let plan = self.create_research_plan(topic).await?;
         self.save_to_file("research_plan.md", &plan).await?;
-        self.emit_log("Generated comprehensive research plan with key questions");
+
+        self.complete_step("planning", "Planning", "Generated comprehensive research plan with key questions", planning_start, None);
 
         // Create todo.md checklist
         let todo = self.create_todo_from_plan(&plan).await?;
@@ -109,30 +134,49 @@ impl RigDeepResearchAgent {
 
         // Phase 2: Information Gathering
         self.set_phase(ResearchPhase::InformationGathering);
-        self.emit_log("Phase 2: Gathering information from multiple sources");
-        let sources = self.gather_information(topic).await?;
-        self.emit_log(&format!("Collected information from {} sources", sources.len()));
+        let searching_start = self.start_step("searching", "Searching", "Executing search queries...");
+
+        let queries = self.generate_search_queries(topic).await?;
+        let sources = self.gather_information_with_queries(topic, queries.clone()).await?;
+
+        self.complete_step(
+            "searching",
+            "Searching",
+            &format!("Executed {} search queries", queries.len()),
+            searching_start,
+            Some(ReasoningMetadata {
+                queries: Some(queries),
+                sources: Some(vec!["Wikipedia".to_string(), "Research papers".to_string(), "News".to_string()]),
+                count: Some(sources.len()),
+            })
+        );
 
         // Phase 3: Analysis
         self.set_phase(ResearchPhase::Analysis);
-        self.emit_log("Phase 3: Analyzing collected information");
+        let analysis_start = self.start_step("analysis", "Analyzing", "Processing collected information...");
+
         let analysis = self.analyze_information(topic, &sources).await?;
         self.save_to_file("analysis.md", &analysis).await?;
-        self.emit_log("Analysis completed - identified key themes and insights");
+
+        self.complete_step("analysis", "Analyzing", "Identified key themes and insights", analysis_start, None);
 
         // Phase 4: Synthesis
         self.set_phase(ResearchPhase::Synthesis);
-        self.emit_log("Phase 4: Synthesizing insights from multiple sources");
+        let synthesis_start = self.start_step("synthesis", "Synthesizing", "Integrating insights from multiple sources...");
+
         let synthesis = self.synthesize_insights(topic, &analysis).await?;
         self.save_to_file("synthesis.md", &synthesis).await?;
-        self.emit_log("Synthesis completed - integrated findings across sources");
+
+        self.complete_step("synthesis", "Synthesizing", "Integrated findings across sources", synthesis_start, None);
 
         // Phase 5: Writing Final Report
         self.set_phase(ResearchPhase::Writing);
-        self.emit_log("Phase 5: Writing comprehensive research report");
+        let writing_start = self.start_step("writing", "Writing", "Generating comprehensive research report...");
+
         let report = self.write_final_report(topic, &plan, &analysis, &synthesis).await?;
         self.save_to_file("final_report.md", &report).await?;
-        self.emit_log("Final report generated - research completed successfully");
+
+        self.complete_step("writing", "Writing", "Final report generated successfully", writing_start, None);
 
         // Mark as completed
         self.set_phase(ResearchPhase::Completed);
@@ -195,14 +239,10 @@ impl RigDeepResearchAgent {
         Ok(todo)
     }
 
-    /// Phase 2: Gather information from multiple sources
-    async fn gather_information(&self, topic: &str) -> Result<Vec<String>> {
+    /// Phase 2: Gather information from multiple sources with queries
+    async fn gather_information_with_queries(&self, topic: &str, queries: Vec<String>) -> Result<Vec<String>> {
         let agent = self.build_research_agent();
         let mut sources = Vec::new();
-
-        // Generate search queries
-        let queries = self.generate_search_queries(topic).await?;
-        self.emit_log(&format!("Generated {} search queries for comprehensive coverage", queries.len()));
 
         // Search each query and collect sources
         for (i, query) in queries.iter().enumerate() {
@@ -224,6 +264,12 @@ impl RigDeepResearchAgent {
 
         self.emit_log(&format!("Information gathering complete - collected {} source sets", sources.len()));
         Ok(sources)
+    }
+
+    /// Phase 2: Gather information from multiple sources (kept for compatibility)
+    async fn gather_information(&self, topic: &str) -> Result<Vec<String>> {
+        let queries = self.generate_search_queries(topic).await?;
+        self.gather_information_with_queries(topic, queries).await
     }
 
     /// Generate comprehensive search queries
@@ -481,6 +527,39 @@ impl RigDeepResearchAgent {
     fn emit_log(&self, message: &str) {
         let _ = self.app_handle.emit("research-agent-log", message);
         println!("[Deep Research] {}", message);
+    }
+
+    /// Emit reasoning step to frontend
+    fn emit_reasoning_step(&self, step: ReasoningStep) {
+        let _ = self.app_handle.emit("reasoning-step", step);
+    }
+
+    /// Start a reasoning step
+    fn start_step(&self, id: &str, name: &str, description: &str) -> Instant {
+        let step = ReasoningStep {
+            id: id.to_string(),
+            name: name.to_string(),
+            description: description.to_string(),
+            status: "running".to_string(),
+            duration: None,
+            metadata: None,
+        };
+        self.emit_reasoning_step(step);
+        Instant::now()
+    }
+
+    /// Complete a reasoning step
+    fn complete_step(&self, id: &str, name: &str, description: &str, start_time: Instant, metadata: Option<ReasoningMetadata>) {
+        let duration = start_time.elapsed().as_millis() as u64;
+        let step = ReasoningStep {
+            id: id.to_string(),
+            name: name.to_string(),
+            description: description.to_string(),
+            status: "completed".to_string(),
+            duration: Some(duration),
+            metadata,
+        };
+        self.emit_reasoning_step(step);
     }
 }
 

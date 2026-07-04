@@ -1,5 +1,6 @@
-use crate::{AppState, config::AppConfig, llm::{LLMClient, ChatRequest, Message as LLMMessage}, storage::{SystemPrompt, Conversation, ChatMessage}, tavily::{TavilyClient, TavilySearchResult}, skills::{Skill, skill_to_tool}};
+use crate::{AppState, config::AppConfig, llm::{LLMClient, ChatRequest, Message as LLMMessage}, storage::{SystemPrompt, Conversation, ChatMessage}, tavily::{TavilyClient, TavilySearchResult}, skills::{Skill, skill_to_tool}, deep_research::DeepResearchManager, code_agent::CodeAgent, resume_agent::ResumeAgent, general_agent::GeneralAgent};
 use tauri::State;
+use tauri::Emitter;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -7,6 +8,7 @@ pub struct SendMessageRequest {
     pub conversation_id: String,
     pub message: String,
     pub files: Option<Vec<FileAttachment>>,
+    pub mode: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -66,6 +68,7 @@ pub async fn get_models(state: State<'_, AppState>) -> Result<Vec<String>, Strin
 // Chat commands
 #[tauri::command]
 pub async fn send_message(
+    app_handle: tauri::AppHandle,
     state: State<'_, AppState>,
     request: SendMessageRequest,
 ) -> Result<SendMessageResponse, String> {
@@ -81,13 +84,192 @@ pub async fn send_message(
         let user_message = db
             .add_message(&request.conversation_id, "user", &request.message)
             .map_err(|e| e.to_string())?;
-        
+
         let history = db
             .get_messages(&request.conversation_id)
             .map_err(|e| e.to_string())?;
-        
+
         (user_message, history)
     };
+
+    // Check if we're in research mode and should use deep research
+    if let Some(mode) = &request.mode {
+        if mode == "general" {
+            println!("General mode detected - running general agent");
+            let _ = app_handle.emit("general-agent-log", "General mode detected - starting general agent");
+
+            // Use conversation_id as user_id for memory
+            let user_id = request.conversation_id.clone();
+
+            // Run general agent with memory and tools
+            let mem0_key = if !config.mem0_api_key.is_empty() {
+                Some(config.mem0_api_key.clone())
+            } else {
+                None
+            };
+
+            let tavily_key = if !config.tavily_api_key.is_empty() {
+                Some(config.tavily_api_key.clone())
+            } else {
+                None
+            };
+
+            let general_agent = GeneralAgent::new(
+                config.base_url.clone(),
+                config.api_key.clone(),
+                app_handle.clone(),
+                mem0_key,
+                tavily_key,
+                user_id,
+            );
+
+            let agent_result = general_agent
+                .process_request(&request.message, &config.model)
+                .await
+                .map_err(|e| format!("General agent failed: {}", e))?;
+
+            let _ = app_handle.emit("general-agent-log", "General agent completed task");
+
+            // Save agent result as assistant message
+            let assistant_message_record = {
+                let db = state.db.lock().unwrap();
+                db.add_message(&request.conversation_id, "assistant", &agent_result)
+                    .map_err(|e| e.to_string())?
+            };
+
+            return Ok(SendMessageResponse {
+                message: user_message,
+                assistant_message: assistant_message_record,
+            });
+        } else if mode == "research" && !config.tavily_api_key.is_empty() {
+            println!("Research mode detected - running deep research");
+            let _ = app_handle.emit("research-log", "Research mode detected - running deep research");
+
+            // Use conversation_id as user_id for memory
+            let user_id = request.conversation_id.clone();
+
+            // Run deep research with memory
+            let mem0_key = if !config.mem0_api_key.is_empty() {
+                Some(config.mem0_api_key.clone())
+            } else {
+                None
+            };
+
+            let research_manager = DeepResearchManager::new(
+                config.tavily_api_key.clone(),
+                app_handle.clone(),
+                mem0_key,
+                user_id
+            );
+
+            let research_result = research_manager
+                .run_research(&request.message)
+                .await
+                .map_err(|e| format!("Deep research failed: {}", e))?;
+
+            let _ = app_handle.emit("research-log", "Research completed - generating response");
+
+            // Save research result as assistant message
+            let assistant_message_record = {
+                let db = state.db.lock().unwrap();
+                db.add_message(&request.conversation_id, "assistant", &research_result)
+                    .map_err(|e| e.to_string())?
+            };
+
+            return Ok(SendMessageResponse {
+                message: user_message,
+                assistant_message: assistant_message_record,
+            });
+        } else if mode == "code" {
+            println!("Code mode detected - running code agent");
+            let _ = app_handle.emit("code-agent-log", "Code mode detected - starting code agent");
+
+            // Get workspace path (use current working directory or project root)
+            let workspace_path = std::env::current_dir()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+
+            // Use conversation_id as user_id for memory
+            let user_id = request.conversation_id.clone();
+
+            // Run code agent with memory
+            let mem0_key = if !config.mem0_api_key.is_empty() {
+                Some(config.mem0_api_key.clone())
+            } else {
+                None
+            };
+
+            let code_agent = CodeAgent::new(
+                config.base_url.clone(),
+                config.api_key.clone(),
+                config.model.clone(),
+                app_handle.clone(),
+                workspace_path,
+                mem0_key,
+                user_id,
+            );
+
+            let agent_result = code_agent
+                .process_request(&request.message, &config.model)
+                .await
+                .map_err(|e| format!("Code agent failed: {}", e))?;
+
+            let _ = app_handle.emit("code-agent-log", "Code agent completed task");
+
+            // Save agent result as assistant message
+            let assistant_message_record = {
+                let db = state.db.lock().unwrap();
+                db.add_message(&request.conversation_id, "assistant", &agent_result)
+                    .map_err(|e| e.to_string())?
+            };
+
+            return Ok(SendMessageResponse {
+                message: user_message,
+                assistant_message: assistant_message_record,
+            });
+        } else if mode == "write" {
+            println!("Resume mode detected - running resume agent");
+            let _ = app_handle.emit("resume-agent-log", "Resume mode detected - starting resume agent");
+
+            // Use conversation_id as user_id for memory
+            let user_id = request.conversation_id.clone();
+
+            // Run resume agent with memory
+            let mem0_key = if !config.mem0_api_key.is_empty() {
+                Some(config.mem0_api_key.clone())
+            } else {
+                None
+            };
+
+            let resume_agent = ResumeAgent::new(
+                config.base_url.clone(),
+                config.api_key.clone(),
+                app_handle.clone(),
+                mem0_key,
+                user_id,
+            );
+
+            let agent_result = resume_agent
+                .process_request(&request.message, &config.model)
+                .await
+                .map_err(|e| format!("Resume agent failed: {}", e))?;
+
+            let _ = app_handle.emit("resume-agent-log", "Resume agent completed task");
+
+            // Save agent result as assistant message
+            let assistant_message_record = {
+                let db = state.db.lock().unwrap();
+                db.add_message(&request.conversation_id, "assistant", &agent_result)
+                    .map_err(|e| e.to_string())?
+            };
+
+            return Ok(SendMessageResponse {
+                message: user_message,
+                assistant_message: assistant_message_record,
+            });
+        }
+    }
     
     // Build messages for LLM
     let mut messages = vec![LLMMessage {

@@ -32,6 +32,7 @@ export interface SystemPrompt {
 export interface SendMessageRequest {
   conversation_id: string;
   message: string;
+  mode?: string;
 }
 
 export interface SendMessageResponse {

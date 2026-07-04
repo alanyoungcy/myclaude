@@ -8,6 +8,7 @@ pub struct AppConfig {
     pub model: String,
     pub system_prompt: String,
     pub tavily_api_key: String,
+    pub mem0_api_key: String,
 }
 
 impl Default for AppConfig {
@@ -18,6 +19,7 @@ impl Default for AppConfig {
             model: "gpt-4".to_string(),
             system_prompt: "You are a helpful assistant.".to_string(),
             tavily_api_key: String::new(),
+            mem0_api_key: "m0-wXmQydXIdi1vZIbtcZ66xrpcyoJEusHyEiuY5SWG".to_string(),
         }
     }
 }
@@ -39,20 +41,24 @@ impl AppConfig {
                 .trim_matches('"')  // Remove surrounding quotes
                 .to_string();
             let tavily_api_key = std::env::var("TAVILY_API_KEY").unwrap_or_default();
-            
-            println!("Config loaded - API Key: {}, Base URL: {}, Model: {}, Tavily: {}", 
+            let mem0_api_key = std::env::var("MEM0_API_KEY")
+                .unwrap_or_else(|_| "m0-wXmQydXIdi1vZIbtcZ66xrpcyoJEusHyEiuY5SWG".to_string());
+
+            println!("Config loaded - API Key: {}, Base URL: {}, Model: {}, Tavily: {}, Mem0: {}",
                 if api_key.is_empty() { "EMPTY" } else { "SET" },
                 base_url,
                 model,
-                if tavily_api_key.is_empty() { "EMPTY" } else { "SET" }
+                if tavily_api_key.is_empty() { "EMPTY" } else { "SET" },
+                if mem0_api_key.is_empty() { "EMPTY" } else { "SET" }
             );
-            
+
             return Ok(Self {
                 api_key,
                 base_url,
                 model,
                 system_prompt,
                 tavily_api_key,
+                mem0_api_key,
             });
         }
         
@@ -62,8 +68,8 @@ impl AppConfig {
     
     pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
         let env_content = format!(
-            "API_KEY={}\nBASE_URL={}\nMODEL={}\nSYSTEM_PROMPT=\"{}\"\nTAVILY_API_KEY={}",
-            self.api_key, self.base_url, self.model, self.system_prompt, self.tavily_api_key
+            "API_KEY={}\nBASE_URL={}\nMODEL={}\nSYSTEM_PROMPT=\"{}\"\nTAVILY_API_KEY={}\nMEM0_API_KEY={}",
+            self.api_key, self.base_url, self.model, self.system_prompt, self.tavily_api_key, self.mem0_api_key
         );
         fs::write(".env", env_content)?;
         println!("Configuration saved to .env");

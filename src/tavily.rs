@@ -7,6 +7,11 @@ struct TavilySearchRequest {
     query: String,
     search_depth: String,
     max_results: u32,
+    include_answer: bool,
+    include_raw_content: bool,
+    include_images: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_tokens: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -36,13 +41,17 @@ impl TavilyClient {
     }
 
     pub async fn search(&self, query: &str, max_results: u32) -> Result<Vec<TavilySearchResult>, Box<dyn std::error::Error>> {
-        println!("Tavily search: {} (max results: {})", query, max_results);
-        
+        println!("Tavily advanced search: {} (max results: {})", query, max_results);
+
         let request = TavilySearchRequest {
             api_key: self.api_key.clone(),
             query: query.to_string(),
-            search_depth: "basic".to_string(),
+            search_depth: "advanced".to_string(), // Changed to advanced
             max_results,
+            include_answer: true,
+            include_raw_content: true,
+            include_images: false,
+            max_tokens: Some(4000), // ~5 chunks per result
         };
 
         let response = self.client
@@ -58,8 +67,8 @@ impl TavilyClient {
         }
 
         let tavily_response: TavilyResponse = response.json().await?;
-        println!("Tavily returned {} results", tavily_response.results.len());
-        
+        println!("Tavily returned {} results (advanced mode)", tavily_response.results.len());
+
         Ok(tavily_response.results)
     }
 }

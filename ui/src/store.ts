@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Conversation, ChatMessage, AppConfig } from './api';
 
-export type ChatMode = 'code' | 'research' | 'write';
+export type ChatMode = 'general' | 'code' | 'research' | 'write';
 
 interface AppState {
   config: AppConfig | null;

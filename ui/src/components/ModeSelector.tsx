@@ -6,7 +6,7 @@ interface ModeSelectorProps {
 }
 
 export default function ModeSelector({ currentMode, onModeChange }: ModeSelectorProps) {
-  const modes: ChatMode[] = ['code', 'research', 'write'];
+  const modes: ChatMode[] = ['general', 'code', 'research', 'write'];
 
   return (
     <div className="flex items-center space-x-2 p-3 border-b border-border bg-surface">

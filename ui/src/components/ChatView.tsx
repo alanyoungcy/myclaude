@@ -4,17 +4,189 @@ import { sendMessage } from '../api';
 import MessageCanvas from './MessageCanvas';
 import ModeSelector from './ModeSelector';
 import { getPlaceholderForMode } from '../chatModes';
+import { listen } from '@tauri-apps/api/event';
+import ResearchProgress, { ResearchStep } from './ResearchProgress';
 
 export default function ChatView() {
   const { currentConversation, messages, addMessage, isLoading, setLoading, config, chatMode, setChatMode } = useStore();
   const [input, setInput] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [researchSteps, setResearchSteps] = useState<ResearchStep[]>([]);
+  const [codeAgentSteps, setCodeAgentSteps] = useState<ResearchStep[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Listen for research logs
+  useEffect(() => {
+    const unlistenResearch = listen<string>('research-log', (event) => {
+      console.log('Research log:', event.payload);
+      const log = event.payload;
+
+      setResearchSteps((prev) => {
+        const newSteps = [...prev];
+
+        // Parse the log message and update steps
+        if (log.includes('Phase 1:')) {
+          newSteps.push({
+            id: 'phase1',
+            name: 'Planning',
+            description: log,
+            status: 'running',
+            startTime: Date.now(),
+          });
+        } else if (log.includes('Generated')) {
+          const phase1 = newSteps.find(s => s.id === 'phase1');
+          if (phase1) {
+            phase1.status = 'completed';
+            phase1.duration = Date.now() - (phase1.startTime || 0);
+            phase1.description = log;
+          }
+        } else if (log.includes('Phase 2:')) {
+          newSteps.push({
+            id: 'phase2',
+            name: 'Researching',
+            description: 'Conducting web searches for each research question...',
+            status: 'running',
+            startTime: Date.now(),
+          });
+        } else if (log.includes('Searching:')) {
+          const phase2 = newSteps.find(s => s.id === 'phase2');
+          if (phase2 && phase2.status === 'running') {
+            phase2.description = log;
+          }
+        } else if (log.includes('Phase 3:')) {
+          const phase2 = newSteps.find(s => s.id === 'phase2');
+          if (phase2) {
+            phase2.status = 'completed';
+            phase2.duration = Date.now() - (phase2.startTime || 0);
+          }
+          newSteps.push({
+            id: 'phase3',
+            name: 'Writing',
+            description: 'Compiling findings into comprehensive report...',
+            status: 'running',
+            startTime: Date.now(),
+          });
+        } else if (log.includes('completed successfully')) {
+          const phase3 = newSteps.find(s => s.id === 'phase3');
+          if (phase3) {
+            phase3.status = 'completed';
+            phase3.duration = Date.now() - (phase3.startTime || 0);
+            phase3.description = 'Research report generated successfully';
+          }
+        }
+
+        return newSteps;
+      });
+    });
+
+    const unlistenCodeAgent = listen<string>('code-agent-log', (event) => {
+      console.log('Code agent log:', event.payload);
+      const log = event.payload;
+
+      setCodeAgentSteps((prev) => {
+        const newSteps = [...prev];
+
+        // Parse code agent logs
+        if (log.includes('starting')) {
+          newSteps.push({
+            id: 'init',
+            name: 'Initializing',
+            description: log,
+            status: 'completed',
+            startTime: Date.now(),
+            duration: 100,
+          });
+        } else if (log.includes('iteration')) {
+          const iterMatch = log.match(/iteration (\d+)/);
+          if (iterMatch) {
+            const iter = iterMatch[1];
+            newSteps.push({
+              id: `iter${iter}`,
+              name: `Iteration ${iter}`,
+              description: 'Analyzing task and planning next action...',
+              status: 'running',
+              startTime: Date.now(),
+            });
+          }
+        } else if (log.includes('requested') && log.includes('tool')) {
+          const lastStep = newSteps[newSteps.length - 1];
+          if (lastStep && lastStep.status === 'running') {
+            lastStep.status = 'completed';
+            lastStep.duration = Date.now() - (lastStep.startTime || 0);
+            lastStep.description = log;
+          }
+        } else if (log.includes('Executing tool:')) {
+          const toolMatch = log.match(/Executing tool: (\w+)/);
+          if (toolMatch) {
+            const toolName = toolMatch[1];
+            newSteps.push({
+              id: `tool-${Date.now()}`,
+              name: `Tool: ${toolName}`,
+              description: log,
+              status: 'running',
+              startTime: Date.now(),
+            });
+          }
+        } else if (log.includes('Reading file:') || log.includes('Writing file:') || log.includes('Listing directory:') || log.includes('Executing command:')) {
+          const lastStep = newSteps[newSteps.length - 1];
+          if (lastStep && lastStep.status === 'running') {
+            lastStep.description = log;
+          }
+        } else if (log.includes('completed task')) {
+          const lastStep = newSteps[newSteps.length - 1];
+          if (lastStep && lastStep.status === 'running') {
+            lastStep.status = 'completed';
+            lastStep.duration = Date.now() - (lastStep.startTime || 0);
+          }
+          newSteps.push({
+            id: 'complete',
+            name: 'Completed',
+            description: 'Code agent finished task successfully',
+            status: 'completed',
+            startTime: Date.now(),
+            duration: 100,
+          });
+        }
+
+        return newSteps;
+      });
+    });
+
+    return () => {
+      unlistenResearch.then((fn) => fn());
+      unlistenCodeAgent.then((fn) => fn());
+    };
+  }, []);
+
+  // Progress steps cycle
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingStep(0);
+      setResearchSteps([]);
+      setCodeAgentSteps([]);
+      return;
+    }
+
+    const steps = [
+      'Processing your request...',
+      'Analyzing context...',
+      'Searching for relevant information...',
+      'Generating response...',
+      'Finalizing output...',
+    ];
+
+    const interval = setInterval(() => {
+      setLoadingStep((prev) => (prev + 1) % steps.length);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   const handleSend = async () => {
     if (!input.trim() || !currentConversation || isLoading) return;
@@ -27,6 +199,7 @@ export default function ChatView() {
       const response = await sendMessage({
         conversation_id: currentConversation.id,
         message: userMessage,
+        mode: chatMode,
       });
 
       addMessage(response.message);
@@ -80,9 +253,6 @@ export default function ChatView() {
 
   return (
     <div className="flex-1 flex flex-col bg-background">
-      {/* Mode Selector */}
-      <ModeSelector currentMode={chatMode} onModeChange={setChatMode} />
-
       <div
         className="flex-1 flex flex-col"
         onDragOver={(e) => {
@@ -128,13 +298,28 @@ export default function ChatView() {
 
         {isLoading && (
           <div className="flex justify-start animate-in">
-            <div className="card p-4">
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            {chatMode === 'research' && researchSteps.length > 0 ? (
+              <div className="w-full max-w-3xl">
+                <ResearchProgress steps={researchSteps} />
               </div>
-            </div>
+            ) : chatMode === 'code' && codeAgentSteps.length > 0 ? (
+              <div className="w-full max-w-3xl">
+                <ResearchProgress steps={codeAgentSteps} />
+              </div>
+            ) : (
+              <div className="card p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="flex space-x-2">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
+                  <span className="text-sm text-text-secondary">
+                    {['Processing your request...', 'Analyzing context...', 'Searching for relevant information...', 'Generating response...', 'Finalizing output...'][loadingStep]}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -143,6 +328,9 @@ export default function ChatView() {
 
       <div className="border-t border-border p-6 bg-surface">
         <div className="max-w-4xl mx-auto space-y-3">
+          {/* Mode Selector - moved to bottom */}
+          <ModeSelector currentMode={chatMode} onModeChange={setChatMode} />
+
           {/* Uploaded files display */}
           {uploadedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2">

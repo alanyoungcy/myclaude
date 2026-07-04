@@ -8,6 +8,10 @@ mod commands;
 mod tavily;
 mod skills;
 mod deep_research;
+mod code_agent;
+mod mem0;
+mod resume_agent;
+mod general_agent;
 
 use config::AppConfig;
 use storage::Database;

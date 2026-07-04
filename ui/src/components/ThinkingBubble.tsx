@@ -6,7 +6,7 @@ interface ThinkingBubbleProps {
 }
 
 export default function ThinkingBubble({ content, isThinking = false }: ThinkingBubbleProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   return (
     <div className="my-4 max-w-3xl">

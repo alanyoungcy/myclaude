@@ -34,31 +34,36 @@ export default function ArtifactsPanel({
             <span className="font-medium text-gray-900">{title}</span>
           </div>
 
-          {/* View mode toggle */}
-          {type === 'code' && (
-            <div className="flex items-center space-x-1 ml-4">
-              <button
-                onClick={() => setViewMode('preview')}
-                className={`px-3 py-1 text-xs rounded transition-colors ${
-                  viewMode === 'preview'
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Preview
-              </button>
-              <button
-                onClick={() => setViewMode('code')}
-                className={`px-3 py-1 text-xs rounded transition-colors ${
-                  viewMode === 'code'
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Code
-              </button>
-            </div>
-          )}
+          {/* View mode toggle - icon buttons */}
+          <div className="flex items-center space-x-1 ml-4 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('preview')}
+              className={`p-2 rounded transition-colors ${
+                viewMode === 'preview'
+                  ? 'bg-white shadow-sm text-gray-900'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+              title="Preview"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setViewMode('code')}
+              className={`p-2 rounded transition-colors ${
+                viewMode === 'code'
+                  ? 'bg-white shadow-sm text-gray-900'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+              title="Code"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Actions */}
@@ -93,8 +98,9 @@ export default function ArtifactsPanel({
         <Canvas
           content={content}
           title={title}
-          type={type === 'code' && viewMode === 'code' ? 'code' : 'markdown'}
-          language={language}
+          type={viewMode === 'code' ? 'code' : 'markdown'}
+          language={viewMode === 'code' ? (type === 'markdown' ? 'markdown' : language) : language}
+          showHeader={false}
         />
       </div>
 
